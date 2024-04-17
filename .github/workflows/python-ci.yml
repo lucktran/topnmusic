@@ -10,6 +10,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: one-line script
-        run: echo test!
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Environment
+        run: echo "Setting up environment..."
+
+      - name: Run Placeholder CI Job
+        run: echo "CI job placeholder..."
+
+      - name: Cleanup
+        run: echo "Cleanup steps if necessary..."
+  
