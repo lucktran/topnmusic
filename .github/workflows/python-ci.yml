@@ -1,7 +1,7 @@
-# code based on sample code from OSU Course CS 362, Exploration: CI in This 
-# Course
+# code based on sample code from CS 362, Exploration: CI in This Course
+# url: https://canvas.oregonstate.edu/courses/1946172/pages/exploration-ci-in-this-course?module_item_id=23935403
 
-name: Python application
+name: topnmusic workflow
 
 on: [push, pull_request]
 
