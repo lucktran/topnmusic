@@ -1,29 +1,23 @@
+import os
 import unittest
 
-# import src.features
+import src.features
 
 
 class TestMFCCFeatures(unittest.TestCase):
 
-    def test_another_fake(self):
-        self.assertTrue(True)
-
-    # @classmethod
-    # def setUpClass(cls):
-    #     # get sample audio
-    #     y, sr = src.features.get_librosa_example_audio('brahms')
-    #     cls._y = y
-    #     cls._sr = sr
-
-    # def test_mel_spectrogram(self):
-    #     src.features.mel_spectrogram(self._y, self._sr)
-
-    # def test_plot_mel_spectrogram(self):
-    #     S = src.features.mel_spectrogram(self._y, self._sr)
-    #     src.features.plot_mel_spectrogram(S, self._sr)
-
-    # def test_mfcc(self):
-    #     M = src.features.mfcc(self._y, self._sr)
+    def test_mfcc_shape_0(self):
+        audio_file_path = os.path.join('.', 'training_data', 'DEAM', '2.mp3')
+        n_mels = 13
+        mfccs = src.features.mfcc(audio_file_path=audio_file_path,
+                                  sr_target=22050,
+                                  n_fft=5512,
+                                  hop_length=2205,
+                                  n_mels=n_mels,
+                                  filter_name='hann',
+                                  plot=False
+                                  )
+        self.assertEqual(n_mels, mfccs.shape[0])
 
 
 if __name__ == '__main__':
