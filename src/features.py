@@ -60,23 +60,40 @@ def mfcc(y: np.ndarray,
                                            fmin=params["fmin"],
                                            fmax=params["fmax"])
 
+        plt.rcParams['font.size'] = 20
         fig, ax = plt.subplots(nrows=2, sharex=True, figsize=(12, 12))
         img = librosa.display.specshow(librosa.power_to_db(S, ref=np.max),
-                                       x_axis='time', y_axis='mel',
-                                       fmax=params["fmax"], ax=ax[0])
+                                       sr=params["sr"],
+                                       hop_length=params["hop_length"],
+                                       n_fft=params["n_fft"],
+                                       win_length=params["win_length"],
+                                       x_axis='time',
+                                       y_axis='mel',
+                                       fmin=params["fmin"],
+                                       fmax=params["fmax"],
+                                       ax=ax[0])
         fig.colorbar(img, ax=[ax[0]])
-        ax[0].set(title='Mel spectrogram')
+        ax[0].set(title=f'Mel spectrogram, n_mels = {params["n_mels"]}')
         ax[0].label_outer()
-        img = librosa.display.specshow(mfccs, x_axis='time', ax=ax[1])
+        img = librosa.display.specshow(mfccs,
+                                       sr=params["sr"],
+                                       hop_length=params["hop_length"],
+                                       n_fft=params["n_fft"],
+                                       win_length=params["win_length"],
+                                       x_axis='time',
+                                       fmin=params["fmin"],
+                                       fmax=params["fmax"],
+                                       ax=ax[1])
         fig.colorbar(img, ax=[ax[1]])
-        ax[1].set(title='MFCC')
+        ax[1].set(title=f'MFCC, n_mfcc = {params["n_mfcc"]}')
+        ax[1].set(ylabel="MFCC Number")
         plt.savefig(os.path.join("figures", "temp", "spectrogram_mfccs.png"))
 
     return mfccs
 
 
 if __name__ == '__main__':
-    mfcc_params_set = "fmax_most_music"
+    mfcc_params_set = "fmax_all_music"
     y = get_sample(mfcc_params_set)
     M = mfcc(y, mfcc_params_set, plot=True)
 
