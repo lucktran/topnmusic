@@ -14,6 +14,7 @@ def featureExtraction():
         lpc = librosa.lpc(y=y, order=16)  # order should be between 10 and 20 and 16 usually used
         
         # add the features to the 2D array
+        # There are 20 different MFCC features and 16 LPC features
         for m in mfcc:
             numpyArray[rowNumber, columnNumber] = np.mean(m)
             columnNumber += 1
