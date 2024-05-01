@@ -1,37 +1,62 @@
-<<<<<<< HEAD
 import json
-=======
->>>>>>> main
 import librosa
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 
 
-<<<<<<< HEAD
-def get_sample(mfcc_params_set):
-    # replace with luck's code
-    params = load_mfcc_params(mfcc_params_set)
-    audio_file_path = os.path.join('.', 'training_data', 'DEAM', '2.mp3')
-    y, sr = librosa.load(audio_file_path, sr=params["sr"])
-    if sr != params["sr"]:
-        print("Warning: target sr is not equal to actual sr")
-
-    return y[:params["audio_num_samples"]]
-
-
-def load_mfcc_params(mfcc_params_set: str):
-    json_file_path = os.path.join('.', 'src', 'mfcc_params.json')
+def load_preprocess_params(preprocess_param_set: str
+                     ) -> dict:
+    json_file_path = os.path.join('.', 'src', 'preprocess_params.json')
     with open(json_file_path) as json_file:
-        mfcc_param_sets = json.load(json_file)
-    return mfcc_param_sets["mfcc_preprocess_config"][mfcc_params_set]
+        preprocess_params_f = json.load(json_file)
+    return preprocess_params_f["preprocess_param_sets"][preprocess_param_set]
+
+
+def load_audio_file(audio_file_path: str,
+                    sr_target: int
+                    ) -> np.ndarray:
+    y, sr = librosa.load(audio_file_path, sr=sr_target)
+    if sr != sr_target:
+        print(f"Warning: for file at path {audio_file_path}, sr target \
+              {sr_target} is not equal to actual sr {sr}")
+    return y
+
+
+def get_non_silent_segments(y: np.ndarray,
+                            frame_length: int,
+                            hop_length: int,
+                            audio_num_samples: int
+                            ) -> np.ndarray:
+    # trim end silence - with fine frame length and hop length
+    yt, index = librosa.effects.trim(y,
+                                     frame_length=frame_length,
+                                     hop_length=hop_length)
+
+    # trim middle silence - with audio sample length, non-overlapping
+    intervals = librosa.effects.split(yt,
+                                      frame_length=audio_num_samples,
+                                      hop_length=audio_num_samples)
+
+    # put non-silent audio intervals together
+    y_ns = yt[intervals[0][0]:intervals[0][1]]
+    for interval in intervals[1:]:
+        y_ns = np.append(y_ns, yt[interval[0]:interval[1]])
+
+    # truncate so that it divides evenly into the segments
+    end_cutoff = y_ns.size % audio_num_samples
+    y_trun = y_ns[:-end_cutoff]
+
+    # create segments
+    segs = np.lib.stride_tricks.sliding_window_view(y_trun, audio_num_samples)[::audio_num_samples]
+
+    return segs
 
 
 def mfcc(y: np.ndarray,
-         mfcc_params_set: str,
-         plot: bool = False):
-
-    params = load_mfcc_params(mfcc_params_set)
+         params: dict,
+         plot: bool = False
+         ) -> np.ndarray:
 
     mfccs = librosa.feature.mfcc(y=y,
                                  sr=params["sr"],
@@ -91,65 +116,91 @@ def mfcc(y: np.ndarray,
         fig.colorbar(img, ax=[ax[1]])
         ax[1].set(title=f'MFCC, n_mfcc = {params["n_mfcc"]}')
         ax[1].set(ylabel="MFCC Number")
-=======
-def mfcc(audio_file_path: str,
-         sr_target: int,
-         n_fft: int,
-         hop_length: int,
-         n_mels: int,
-         filter_name: str,
-         plot: bool = False):
-
-    y, sr = librosa.load(audio_file_path, sr=sr_target)
-    win_func = librosa.filters.get_window(filter_name, n_fft)
-
-    mfccs = librosa.feature.mfcc(y=y,
-                                 sr=sr,
-                                 n_fft=n_fft,
-                                 hop_length=hop_length,
-                                 n_mels=n_mels,
-                                 window=win_func)
-
-    if plot is True:
-        S = librosa.feature.melspectrogram(y=y,
-                                           sr=sr,
-                                           n_fft=n_fft,
-                                           hop_length=hop_length,
-                                           n_mels=n_mels,
-                                           window=win_func)
-
-        fig, ax = plt.subplots(nrows=2, sharex=True, figsize=(12, 12))
-        img = librosa.display.specshow(librosa.power_to_db(S, ref=np.max),
-                                       x_axis='time', y_axis='mel', fmax=8000,
-                                       ax=ax[0])
-        fig.colorbar(img, ax=[ax[0]])
-        ax[0].set(title='Mel spectrogram')
-        ax[0].label_outer()
-        img = librosa.display.specshow(mfccs, x_axis='time', ax=ax[1])
-        fig.colorbar(img, ax=[ax[1]])
-        ax[1].set(title='MFCC')
->>>>>>> main
         plt.savefig(os.path.join("figures", "temp", "spectrogram_mfccs.png"))
 
     return mfccs
 
 
-if __name__ == '__main__':
-<<<<<<< HEAD
-    mfcc_params_set = "fmax_all_music"
-    y = get_sample(mfcc_params_set)
-    M = mfcc(y, mfcc_params_set, plot=True)
-=======
-    audio_file_path = os.path.join('.', 'training_data', 'DEAM', '2.mp3')
+def zero_crossing_rate(y: np.ndarray,
+                       params: dict
+                       ) -> np.ndarray:
+    zcr = librosa.feature.zero_crossing_rate(y,
+                                             frame_length=params["win_length"],
+                                             hop_length=params["hop_length"],
+                                             center=params["center"])
+    return zcr
 
-    mfccs = mfcc(audio_file_path=audio_file_path,
-                 sr_target=22050,
-                 n_fft=5512,
-                 hop_length=2205,
-                 n_mels=13,
-                 filter_name='hann',
-                 plot=True
-                 )
->>>>>>> main
+
+def spectral_rolloff(y: np.ndarray,
+                     params: dict
+                     ) -> np.ndarray:
+    s_r = librosa.feature.spectral_rolloff(y=y,
+                                           sr=params["sr"],
+                                           n_fft=params["n_fft"],
+                                           hop_length=params["hop_length"],
+                                           window=params["window"],
+                                           center=params["center"],
+                                           pad_mode=params["pad_mode"])
+    return s_r
+
+
+def spectral_centroid(y: np.ndarray,
+                      params: dict
+                      ) -> np.ndarray:
+    s_c = librosa.feature.spectral_centroid(y=y,
+                                            sr=params["sr"],
+                                            n_fft=params["n_fft"],
+                                            hop_length=params["hop_length"],
+                                            window=params["window"],
+                                            center=params["center"],
+                                            pad_mode=params["pad_mode"])
+    return s_c
+
+
+def get_seg_features(segs: np.ndarray,
+                     params: dict,
+                     track_id: int,
+                     label: str):
+    # path to features, path to csv of name + label + track
+
+    for i, seg in enumerate(segs):
+        # get features
+        M = mfcc(seg, params)  # n_mfcc x num_windows
+        zcr = zero_crossing_rate(seg, params)  # 1 x num_windows
+        s_r = spectral_rolloff(seg, params)  # 1 x num_windows
+        s_c = spectral_centroid(seg, params)  # 1 x num_windows
+
+        # package them into one np.ndarray
+        features = np.concatenate((M, zcr, s_r, s_c))
+
+        # save features
+
+
+
+def preprocess_one_audio_file(audio_file_path: str,
+                              preprocess_param_set):
+    # load preprocess parameter set
+    params = load_preprocess_params(preprocess_param_set)
+
+    # load song
+    y = load_audio_file(audio_file_path,
+                        params["sr"])
+
+    # drop dead space and split into segments
+    segs = get_non_silent_segments(y,
+                                   params["win_length"],
+                                   params["hop_length"],
+                                   params["audio_num_samples"])
+
+    # extract and save features
+    get_seg_features(segs, params, 'rock')
+
+    print('done here')
+
+
+if __name__ == '__main__':
+    mfcc_params_set = "fmax_all_music"
+    y = preprocess_one_audio_file(audio_file_path=os.path.join('.', 'training_data', 'DEAM', '2.mp3'),
+                                  preprocess_param_set="fmax_all_music")
 
     print('done')

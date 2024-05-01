@@ -1,5 +1,5 @@
 {
-    "mfcc_preprocess_config" : {
+    "preprocess_param_sets" : {
         "fmax_most_music": {
             "sr": 8000,
             "n_mfcc": 5,
