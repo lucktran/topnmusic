@@ -3,6 +3,16 @@ import librosa
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pandas as pd
+import pickle
+import shutil
+
+
+def get_audio_data(audio_set: str) -> pd.DataFrame:
+    audio_folder_path = os.path.join(".", "data", "raw", audio_set)
+    labels_path = os.path.join(audio_folder_path, "labeled_tracks.csv")
+    audio_data = pd.read_csv(labels_path)
+    return audio_data
 
 
 def load_preprocess_params(preprocess_param_set: str
@@ -16,7 +26,9 @@ def load_preprocess_params(preprocess_param_set: str
 def load_audio_file(audio_file_path: str,
                     sr_target: int
                     ) -> np.ndarray:
-    y, sr = librosa.load(audio_file_path, sr=sr_target)
+    raw_folder = os.path.join(".", "data", "raw")
+    full_audio_path = os.path.join(raw_folder, audio_file_path)
+    y, sr = librosa.load(full_audio_path, sr=sr_target)
     if sr != sr_target:
         print(f"Warning: for file at path {audio_file_path}, sr target \
               {sr_target} is not equal to actual sr {sr}")
@@ -157,50 +169,84 @@ def spectral_centroid(y: np.ndarray,
     return s_c
 
 
-def get_seg_features(segs: np.ndarray,
-                     params: dict,
-                     track_id: int,
-                     label: str):
-    # path to features, path to csv of name + label + track
+def prepare_folder(audio_set: str, param_set: str) -> str:
+    # prepare samples folder
+    samp_folder_name = f"samples_audio_{audio_set}_params_{param_set}"
+    samp_folder_path = os.path.join("data", "samples", samp_folder_name)
+    if os.path.exists(samp_folder_path):
+        shutil.rmtree(samp_folder_path)
+    os.mkdir(samp_folder_path)
+    return samp_folder_path
 
+
+def create_samples(segs: np.ndarray,
+                   params: dict,
+                   df_labels: pd.DataFrame,
+                   track_id: int,
+                   label: str,
+                   samp_folder_path: str):
+    # get samples
     for i, seg in enumerate(segs):
-        # get features
         M = mfcc(seg, params)  # n_mfcc x num_windows
         zcr = zero_crossing_rate(seg, params)  # 1 x num_windows
         s_r = spectral_rolloff(seg, params)  # 1 x num_windows
         s_c = spectral_centroid(seg, params)  # 1 x num_windows
 
         # package them into one np.ndarray
-        features = np.concatenate((M, zcr, s_r, s_c))
+        sample = np.concatenate((M, zcr, s_r, s_c)).T  # m x num features
 
         # save features
+        samp_file_name = f"sample_{track_id}_{label}_{i}.pkl"
+        file_path = os.path.join(samp_folder_path, samp_file_name)
+        with open(file_path, 'wb') as f:
+            pickle.dump(sample, f)
+
+        # remember the label and original track of this sample
+        df_labels.loc[len(df_labels.index)] = [samp_file_name, label, track_id]
 
 
+def save_labels(samp_folder_path: str, df_labels: pd.DataFrame):
+    csv_path = os.path.join(samp_folder_path, "labels.csv")
+    df_labels.to_csv(csv_path)
 
-def preprocess_one_audio_file(audio_file_path: str,
-                              preprocess_param_set):
+
+def process_audio_files(audio_set: str,
+                        preprocess_param_set: str):
     # load preprocess parameter set
     params = load_preprocess_params(preprocess_param_set)
 
-    # load song
-    y = load_audio_file(audio_file_path,
-                        params["sr"])
+    # get labels of original audio
+    audio_data = get_audio_data(audio_set)
 
-    # drop dead space and split into segments
-    segs = get_non_silent_segments(y,
-                                   params["win_length"],
-                                   params["hop_length"],
-                                   params["audio_num_samples"])
+    # initialize df to save the labels of created samples
+    df_labels = pd.DataFrame(columns=["file_name", "label", "track_id"])
 
-    # extract and save features
-    get_seg_features(segs, params, 'rock')
+    # prepare folder to hold samples
+    samp_folder_path = prepare_folder(audio_set, preprocess_param_set)
 
-    print('done here')
+    for track_id in [26546, 26583]:  # replace with full later
+        row = audio_data.loc[audio_data['track_id'] == track_id]
+        audio_file_path = row["file_path"].values[0]
+        label = row["genre_top"].values[0]
+
+        # load song
+        y = load_audio_file(audio_file_path, params["sr"])
+
+        # drop dead space and split into segments
+        segs = get_non_silent_segments(y,
+                                       params["win_length"],
+                                       params["hop_length"],
+                                       params["audio_num_samples"])
+
+        # extract and save features
+        create_samples(segs, params, df_labels, track_id, label, samp_folder_path)
+
+    # save lables
+    save_labels(samp_folder_path, df_labels)
 
 
 if __name__ == '__main__':
-    mfcc_params_set = "fmax_all_music"
-    y = preprocess_one_audio_file(audio_file_path=os.path.join('.', 'training_data', 'DEAM', '2.mp3'),
-                                  preprocess_param_set="fmax_all_music")
+    process_audio_files(audio_set="fma_medium",
+                        preprocess_param_set="fmax_all_music")
 
     print('done')
