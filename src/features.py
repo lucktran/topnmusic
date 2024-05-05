@@ -248,30 +248,28 @@ def process_audio_files(audio_set: str,
     # prepare folder to hold samples
     samp_folder_path = prepare_folder(audio_set, preprocess_param_set)
 
-    for track_id in audio_data["track_id"].values:
-        try:
-            row = audio_data.loc[audio_data['track_id'] == track_id]
-            audio_file_path = row["file_path"].values[0]
-            label = row["genre_top"].values[0]
+    for track_id in [65753, 80391, 98558]:  # audio_data["track_id"].values:
+        row = audio_data.loc[audio_data['track_id'] == track_id]
+        audio_file_path = row["file_path"].values[0]
+        label = row["genre_top"].values[0]
 
-            # load song
-            y = load_audio_file(audio_file_path, params["sr"])
+        # load song
+        y = load_audio_file(audio_file_path, params["sr"])
 
-            # drop dead space and split into segments
-            segs = get_non_silent_segments(y,
-                                           params["win_length"],
-                                           params["hop_length"],
-                                           params["audio_num_samples"])
+        # drop dead space and split into segments
+        segs = get_non_silent_segments(y,
+                                       params["win_length"],
+                                       params["hop_length"],
+                                       params["audio_num_samples"])
 
-            # extract and save features
-            create_samples(segs, params,
-                           df_labels,
-                           track_id,
-                           label,
-                           samp_folder_path)
-        except:
-            with open('problem_audio.txt', 'a') as f:
-                f.write(f"{track_id}\n")
+        # extract and save features
+        create_samples(segs, params,
+                       df_labels,
+                       track_id,
+                       label,
+                       samp_folder_path)
+        with open('problem_audio.txt', 'a') as f:
+            f.write(f"{track_id}\n")
 
     # save lables
     save_labels(samp_folder_path, df_labels)
