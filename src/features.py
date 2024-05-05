@@ -6,6 +6,7 @@ import os
 import pandas as pd
 import pickle
 import shutil
+from sklearn.model_selection import train_test_split
 
 
 def get_audio_data(audio_set: str) -> pd.DataFrame:
@@ -15,8 +16,7 @@ def get_audio_data(audio_set: str) -> pd.DataFrame:
     return audio_data
 
 
-def load_preprocess_params(preprocess_param_set: str
-                     ) -> dict:
+def load_preprocess_params(preprocess_param_set: str) -> dict:
     json_file_path = os.path.join('.', 'src', 'preprocess_params.json')
     with open(json_file_path) as json_file:
         preprocess_params_f = json.load(json_file)
@@ -193,10 +193,10 @@ def create_samples(segs: np.ndarray,
         s_c = spectral_centroid(seg, params)  # 1 x num_windows
 
         # package them into one np.ndarray
-        sample = np.concatenate((M, zcr, s_r, s_c)).T  # m x num features
+        sample = np.concatenate((M, zcr, s_r, s_c)).T
 
         # save features
-        samp_file_name = f"sample_{track_id}_{label}_{i}.pkl"
+        samp_file_name = f"sample_{track_id}_{i}.pkl"
         file_path = os.path.join(samp_folder_path, samp_file_name)
         with open(file_path, 'wb') as f:
             pickle.dump(sample, f)
@@ -208,6 +208,30 @@ def create_samples(segs: np.ndarray,
 def save_labels(samp_folder_path: str, df_labels: pd.DataFrame):
     csv_path = os.path.join(samp_folder_path, "labels.csv")
     df_labels.to_csv(csv_path)
+
+
+def divide_samples(df_labels: pd.DataFrame,
+                   data_split: list
+                   ) -> tuple:
+    # plot distribution
+    # df_labels['label'].value_counts().plot(kind='pie', autopct='%1.0f%%')
+
+    # split off training set
+    X = df_labels['file_name']
+    y = df_labels['label']
+
+    X_train, X_non_train, y_train, y_non_train = train_test_split(
+        X, y, train_size=data_split[0], random_state=42
+    )
+    # y_train.value_counts().plot(kind='pie', autopct='%1.0f%%')
+
+    # split off test, validation sets
+    rel_test_pct = data_split[1] / (1 - data_split[0])
+    X_test, X_val, y_test, y_val = train_test_split(
+        X_non_train, y_non_train, train_size=rel_test_pct, random_state=42
+    )
+
+    return X_train, X_test, X_val, y_train, y_test, y_val
 
 
 def process_audio_files(audio_set: str,
@@ -224,29 +248,79 @@ def process_audio_files(audio_set: str,
     # prepare folder to hold samples
     samp_folder_path = prepare_folder(audio_set, preprocess_param_set)
 
-    for track_id in [26546, 26583]:  # replace with full later
-        row = audio_data.loc[audio_data['track_id'] == track_id]
-        audio_file_path = row["file_path"].values[0]
-        label = row["genre_top"].values[0]
+    for track_id in audio_data["track_id"].values:
+        try:
+            row = audio_data.loc[audio_data['track_id'] == track_id]
+            audio_file_path = row["file_path"].values[0]
+            label = row["genre_top"].values[0]
 
-        # load song
-        y = load_audio_file(audio_file_path, params["sr"])
+            # load song
+            y = load_audio_file(audio_file_path, params["sr"])
 
-        # drop dead space and split into segments
-        segs = get_non_silent_segments(y,
-                                       params["win_length"],
-                                       params["hop_length"],
-                                       params["audio_num_samples"])
+            # drop dead space and split into segments
+            segs = get_non_silent_segments(y,
+                                           params["win_length"],
+                                           params["hop_length"],
+                                           params["audio_num_samples"])
 
-        # extract and save features
-        create_samples(segs, params, df_labels, track_id, label, samp_folder_path)
+            # extract and save features
+            create_samples(segs, params,
+                           df_labels,
+                           track_id,
+                           label,
+                           samp_folder_path)
+        except:
+            with open('problem_audio.txt', 'a') as f:
+                f.write(f"{track_id}\n")
 
     # save lables
     save_labels(samp_folder_path, df_labels)
+
+    # divide samples into train, test, validation sets
+    X_train, X_test, X_val, y_train, y_test, y_val = divide_samples(
+        samp_folder_path, df_labels)
+
+    # get normalization data from training set
+
+    # balance sets through upsampling
+
+
+# def observe_feat_distributions(samp_folder_path: str,
+#                                df_labels: pd.DataFrame):
+#     for file_name in df_labels["file_name"]:
+#         file_path = os.path.join(samp_folder_path, file_name)
+#         sample = pickle.load(file_path)
+
+
+def get_max_min(samp_folder_path: str, df_labels: pd.DataFrame):
+    num_feats = 8
+    maxs = np.ones((num_feats)) * -np.inf
+    mins = np.ones((num_feats)) * np.inf
+    for file_name in df_labels["file_name"]:
+        file_path = os.path.join(samp_folder_path, file_name)
+        with open(file_path, 'rb') as f:
+            sample = pickle.load(f)
+        sample_maxs = np.amax(sample, axis=0)
+        sample_mins = np.amin(sample, axis=0)
+
+        maxs = np.where(sample_maxs > maxs, sample_maxs, maxs)
+        mins = np.where(sample_mins < mins, sample_mins, mins)
+
+    return maxs, mins
 
 
 if __name__ == '__main__':
     process_audio_files(audio_set="fma_medium",
                         preprocess_param_set="fmax_all_music")
+
+    # preprocess_param_set = "fmax_all_music"
+    # params = load_preprocess_params(preprocess_param_set)
+    # samp_folder_name = "samples_audio_fma_medium_params_fmax_all_music"
+    # samp_folder_path = os.path.join(".", "data", "samples", samp_folder_name)
+    # df_labels_path = os.path.join(samp_folder_path, "labels.csv")
+    # df_labels = pd.read_csv(df_labels_path)
+
+    # X_train, X_test, X_val, y_train, y_test, y_val = divide_samples(df_labels, params["data_split"])
+    # get_max_min(samp_folder_path, df_labels)
 
     print('done')

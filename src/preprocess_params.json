@@ -17,7 +17,8 @@
             "fmin": 20,
             "fmax": 4000,
             "num_windows": 234,
-            "audio_num_samples": 24022
+            "audio_num_samples": 24022,
+            "data_split": [0.80, 0.10, 0.10]
         },
 
         "fmax_all_music": {
@@ -37,7 +38,8 @@
             "fmin": 20,
             "fmax": 5000,
             "num_windows": 293,
-            "audio_num_samples": 30040
+            "audio_num_samples": 30040,
+            "data_split": [0.80, 0.10, 0.10]
         },
 
         "fmax_more_than_music": {
@@ -57,7 +59,8 @@
             "fmin": 20,
             "fmax": 8000,
             "num_windows": 233,
-            "audio_num_samples": 48072
+            "audio_num_samples": 48072,
+            "data_split": [0.80, 0.10, 0.10]
         }
     }
 }
