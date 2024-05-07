@@ -2,3 +2,6 @@
 \topnmusic.egg-info
 \__pycache__
 \build
+
+*.pkl
+*.mp3

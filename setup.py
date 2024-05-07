@@ -10,5 +10,6 @@ setup(
         'librosa',
         'matplotlib',
         'numpy',
+        'pandas'
     ],
 )
