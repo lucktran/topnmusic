@@ -7,6 +7,9 @@ import pandas as pd
 import pickle
 import shutil
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from imblearn.combine import SMOTEENN
+
 
 
 def get_audio_data(audio_set: str) -> pd.DataFrame:
@@ -233,6 +236,53 @@ def divide_samples(df_labels: pd.DataFrame,
 
     return X_train, X_test, X_val, y_train, y_test, y_val
 
+def normalize_features(X_train: pd.Series, df_labels: pd.DataFrame, samp_folder_path: str) -> str:
+
+    # initialize the StandardScaler
+    feature_scaler = StandardScaler()
+    feature_matrix = []
+
+    # collect features only from training samples
+    for file_name in X_train:
+        file_path = os.path.join(samp_folder_path, file_name)
+        with open(file_path, 'rb') as f:
+            sample = pickle.load(f)
+        feature_matrix.append(sample)
+
+    # concatenate all training samples into a single matrix
+    feature_matrix = np.concatenate(feature_matrix)
+
+    # fit the scaler to the training data to compute mean and std
+    feature_scaler.fit(feature_matrix)
+
+    # save the scaler object for future use
+    with open(os.path.join(samp_folder_path, 'feature_scaler.pkl'), 'wb') as scaler_file:
+        pickle.dump(feature_scaler, scaler_file)
+
+    # apply normalization to all samples (train, test, validation)
+    for file_name in df_labels['file_name']:
+        file_path = os.path.join(samp_folder_path, file_name)
+        with open(file_path, 'rb') as f:
+            sample = pickle.load(f)
+
+        # transform the sample using the fitted scaler
+        sample_normalized = feature_scaler.transform(sample)
+
+        # save the normalized sample back to disk
+        with open(file_path, 'wb') as f:
+            pickle.dump(sample_normalized, f)
+
+    return samp_folder_path
+
+def resample_data(X: pd.Series, y: pd.Series) -> tuple:
+
+    # initialize SMOTEENN, combining SMOTE (oversampling) and Edited Nearest Neighbors (undersampling)
+    smote_enn = SMOTEENN(random_state=42)
+
+    # resample the dataset
+    X_res, y_res = smote_enn.fit_resample(X.values.reshape(-1, 1), y)
+
+    return pd.Series(X_res.flatten()), pd.Series(y_res)
 
 def process_audio_files(audio_set: str,
                         preprocess_param_set: str):
@@ -279,8 +329,12 @@ def process_audio_files(audio_set: str,
         samp_folder_path, df_labels)
 
     # get normalization data from training set
+    normalize_features(X_train, df_labels, samp_folder_path)
+    
+    # apply SMOTEENN resampling
+    X_train_res, y_train_res = resample_data(X_train, y_train)
 
-    # balance sets through upsampling
+    print(f"Training samples (resampled): {len(X_train_res)}, Validation samples: {len(X_val)}, Test samples: {len(X_test)}")
 
 
 # def observe_feat_distributions(samp_folder_path: str,
