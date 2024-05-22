@@ -2,6 +2,7 @@
 \topnmusic.egg-info
 \__pycache__
 \build
+\models
 
 *.pkl
 *.mp3
