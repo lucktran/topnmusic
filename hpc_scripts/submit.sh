@@ -14,7 +14,7 @@
 module load cuda/12.2
 
 # load venv
-source /nfs/hpc/share/dilgrenc/fine_tuning/.venv/bin/activate
+source /nfs/hpc/share/dilgrenc/topnmusic/.venv/bin/activate
 
 # run my job (e.g. matlab, python)
 python3 ./src/ast_finetuned_audioset_finetuned_gtzan.py
