@@ -1,9 +1,7 @@
 #!/bin/env python3
 
-# !pip install accelerate -U
-# !pip install datasets
-# !pip install evaluate
-# !pip install git+https://github.com/huggingface/transformers
+import os
+import sys
 
 import accelerate
 from datasets import Audio
@@ -20,26 +18,21 @@ from transformers import Trainer
 from transformers import TrainingArguments
 
 
+# learning_rate = 5e-5
+# batch_size = 8
+
+# load in hyperparams from batch script
+learning_rate = float(sys.argv[1])
+batch_size = int(sys.argv[2])
+learning_rate_str = str(learning_rate).replace('-', '_') 
+
 # load in gtzan dataset
 gtzan = load_dataset("marsyas/gtzan", "all", trust_remote_code=True)
-
-# split into train and test datasets
-gtzan = gtzan["train"].train_test_split(seed=42, shuffle=True, test_size=0.1)
 
 # create function mapping label integer to genre name
 id2label_fn = gtzan["train"].features["genre"].int2str
 
-# def generate_audio():
-#     # gets sampling rate, signal, and genre of a random sample in training set
-#     example = gtzan["train"].shuffle()[0]
-#     audio = example["audio"]
-#     return (
-#         audio["sampling_rate"],
-#         audio["array"],
-#     ), id2label_fn(example["genre"])
-
 # get model's feature extractor
-model_id = "MIT/ast-finetuned-audioset-10-10-0.4593"
 feature_extractor = ASTFeatureExtractor()
 
 # cast train and test datasets to sampling rate used in pre-trained model
@@ -74,7 +67,14 @@ id2label = {
 }
 label2id = {v: k for k, v in id2label.items()}
 
+# split into 70-20-10 train, val, test datasets
+test_split = gtzan_encoded["train"].train_test_split(seed=42, shuffle=True, test_size=0.1)
+train_val_split = test_split["train"].train_test_split(seed=42, shuffle=True, test_size=0.222)
+
+# TODO: make graphs of the dataset split
+
 # load in the pre-trained model configuration
+model_id = "MIT/ast-finetuned-audioset-10-10-0.4593"
 model = ASTForAudioClassification.from_pretrained(
     model_id,
 )
@@ -101,21 +101,26 @@ model.num_labels = num_labels
 
 # train model
 model_name = model_id.split("/")[-1]
-batch_size = 8
 gradient_accumulation_steps = 1
-num_train_epochs = 10
+num_train_epochs = 50  # will keep model at epoch with highest accuracy
+
+# save model checkpoints during training
+checkpoint_folder_name = f'checkpoint_model_lr_{learning_rate_str}_bs_{batch_size}'
+checkpoint_folder_path = os.path.join('.', 'checkpoints', checkpoint_folder_name)
+os.mkdir(checkpoint_folder_path)
 
 training_args = TrainingArguments(
-    f"{model_name}-finetuned-gtzan",
+    output_dir=checkpoint_folder_path,
     eval_strategy="epoch",
     save_strategy="epoch",
-    learning_rate=5e-5,
+    learning_rate=learning_rate,
     per_device_train_batch_size=batch_size,
     gradient_accumulation_steps=gradient_accumulation_steps,
     per_device_eval_batch_size=batch_size,
     num_train_epochs=num_train_epochs,
     warmup_ratio=0.1,
     logging_steps=5,
+    save_total_limit=1,
     load_best_model_at_end=True,
     metric_for_best_model="accuracy",
     fp16=True,
@@ -132,8 +137,8 @@ def compute_metrics(eval_pred):
 trainer = Trainer(
     model,
     training_args,
-    train_dataset=gtzan_encoded["train"],
-    eval_dataset=gtzan_encoded["test"],
+    train_dataset=train_val_split["train"],
+    eval_dataset=train_val_split["test"],
     tokenizer=feature_extractor,
     compute_metrics=compute_metrics,
 )
@@ -148,4 +153,9 @@ kwargs = {
     "tasks": "audio-classification",
 }
 
-model.save_pretrained('saved_model')
+# save the model and its configuration
+save_folder_name = f'saved_model_lr_{learning_rate_str}_bs_{batch_size}'
+save_folder_path = os.path.join('.', 'end_models', save_folder_name)
+os.mkdir(save_folder_path)
+
+model.save_pretrained(save_folder_path)
