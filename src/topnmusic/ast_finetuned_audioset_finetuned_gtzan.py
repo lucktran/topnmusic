@@ -1,5 +1,3 @@
-#!/bin/env python3
-
 import os
 import sys
 
@@ -8,6 +6,7 @@ from datasets import Audio
 from datasets import load_dataset
 import evaluate
 import librosa
+import librosa.display
 import numpy as np
 from transformers import ASTFeatureExtractor
 from transformers import ASTForAudioClassification
@@ -16,10 +15,13 @@ from transformers import models
 from transformers import AutoConfig
 from transformers import Trainer
 from transformers import TrainingArguments
+import matplotlib.pyplot as plt
 
 
 # learning_rate = 5e-5
 # batch_size = 8
+
+mel_spectrograms_db = []
 
 # load in hyperparams from batch script
 learning_rate = float(sys.argv[1])
@@ -48,6 +50,23 @@ def preprocess_function(examples):
         sampling_rate=feature_extractor.sampling_rate,
         return_tensors='pt'
     )
+
+    # Get mel spectrograms from the inputs
+    for audio_array in audio_arrays:
+        mel_spectrogram = librosa.feature.melspectrogram(
+            y=audio_array,
+            sr=feature_extractor.sampling_rate,
+            n_fft=feature_extractor.feature_extractor.spectrogram_config.n_fft,
+            hop_length=feature_extractor.feature_extractor.spectrogram_config.hop_length,
+            n_mels=feature_extractor.feature_extractor.spectrogram_config.feat_extract_cfg.num_feature_bins,
+            fmin=feature_extractor.feature_extractor.spectrogram_config.feat_extract_cfg.f_min,
+            fmax=feature_extractor.feature_extractor.spectrogram_config.feat_extract_cfg.f_max
+        )
+        # Convert mel spectrogram to decibel scale
+        mel_spectrogram_db = librosa.power_to_db(mel_spectrogram, ref=np.max)
+        # Append to the global variable
+        mel_spectrograms_db.append(mel_spectrogram_db)
+
     return inputs
 
 gtzan_encoded = gtzan.map(
@@ -57,6 +76,15 @@ gtzan_encoded = gtzan.map(
     batch_size=100,
     num_proc=1,
 )
+
+# Plot mel spectrograms
+for mel_spectrogram in mel_spectrogram_db[:3]:  # Plot first 3 examples
+    plt.figure(figsize=(10, 4))
+    librosa.display.specshow(mel_spectrogram, sr=feature_extractor.sampling_rate, x_axis='time', y_axis='mel')
+    plt.colorbar(format='%+2.0f dB')
+    plt.title('Mel Spectrogram')
+    plt.tight_layout()
+    plt.show()
 
 # change column name from genre to label
 gtzan_encoded = gtzan_encoded.rename_column("genre", "label")
@@ -71,7 +99,23 @@ label2id = {v: k for k, v in id2label.items()}
 test_split = gtzan_encoded["train"].train_test_split(seed=42, shuffle=True, test_size=0.1)
 train_val_split = test_split["train"].train_test_split(seed=42, shuffle=True, test_size=0.222)
 
-# TODO: make graphs of the dataset split
+# Calculate the sizes of train, val, and test sets
+train_size = len(train_val_split["train"])
+val_size = len(train_val_split["test"])
+test_size = len(test_split["test"])
+
+# Data to plot
+labels = 'Train', 'Validation', 'Test'
+sizes = [train_size, val_size, test_size]
+colors = ['gold', 'yellowgreen', 'lightcoral']
+explode = (0.1, 0, 0)  # explode 1st slice
+
+# Plot
+plt.figure(figsize=(7, 7))
+plt.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%', shadow=True, startangle=140)
+plt.axis('equal')
+plt.title('Dataset Split')
+plt.show()
 
 # load in the pre-trained model configuration
 model_id = "MIT/ast-finetuned-audioset-10-10-0.4593"
