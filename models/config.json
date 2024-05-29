@@ -1,0 +1,48 @@
+{
+  "architectures": [
+    "ASTForAudioClassification"
+  ],
+  "attention_probs_dropout_prob": 0.0,
+  "frequency_stride": 10,
+  "hidden_act": "gelu",
+  "hidden_dropout_prob": 0.0,
+  "hidden_size": 768,
+  "id2label": {
+    "0": "blues",
+    "1": "classical",
+    "2": "country",
+    "3": "disco",
+    "4": "hiphop",
+    "5": "jazz",
+    "6": "metal",
+    "7": "pop",
+    "8": "reggae",
+    "9": "rock"
+  },
+  "initializer_range": 0.02,
+  "intermediate_size": 3072,
+  "label2id": {
+    "blues": "0",
+    "classical": "1",
+    "country": "2",
+    "disco": "3",
+    "hiphop": "4",
+    "jazz": "5",
+    "metal": "6",
+    "pop": "7",
+    "reggae": "8",
+    "rock": "9"
+  },
+  "layer_norm_eps": 1e-12,
+  "max_length": 1024,
+  "model_type": "audio-spectrogram-transformer",
+  "num_attention_heads": 12,
+  "num_hidden_layers": 12,
+  "num_mel_bins": 128,
+  "patch_size": 16,
+  "problem_type": "single_label_classification",
+  "qkv_bias": true,
+  "time_stride": 10,
+  "torch_dtype": "float32",
+  "transformers_version": "4.41.1"
+}
