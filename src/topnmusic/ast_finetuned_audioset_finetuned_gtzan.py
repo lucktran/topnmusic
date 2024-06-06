@@ -25,6 +25,7 @@ batch_size = 8
 # use these when running from batch script
 # learning_rate = float(sys.argv[1])
 # batch_size = int(sys.argv[2])
+
 learning_rate_str = str(learning_rate).replace('-', '_') 
 
 # load in gtzan dataset
