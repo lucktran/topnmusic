@@ -6,4 +6,4 @@
 3. Activate virtual environment:
 `.\.venv\Scripts\activate`
 4. run set up:
-`pip install .`
+`pip install -e .`
