@@ -18,12 +18,14 @@ from transformers import Trainer
 from transformers import TrainingArguments
 
 
-# learning_rate = 5e-5
-# batch_size = 8
+# use these when running this script by itself
+learning_rate = 5e-5
+batch_size = 8
 
-# load in hyperparams from batch script
-learning_rate = float(sys.argv[1])
-batch_size = int(sys.argv[2])
+# use these when running from batch script
+# learning_rate = float(sys.argv[1])
+# batch_size = int(sys.argv[2])
+
 learning_rate_str = str(learning_rate).replace('-', '_') 
 
 # load in gtzan dataset
@@ -153,9 +155,9 @@ kwargs = {
     "tasks": "audio-classification",
 }
 
-# # save the model and its configuration
-# save_folder_name = f'saved_model_lr_{learning_rate_str}_bs_{batch_size}'
-# save_folder_path = os.path.join('.', 'end_models', save_folder_name)
-# os.mkdir(save_folder_path)
+# save the model and its configuration
+save_folder_name = f'saved_model_lr_{learning_rate_str}_bs_{batch_size}'
+save_folder_path = os.path.join('.', 'end_models', save_folder_name)
+os.mkdir(save_folder_path)
 
-# model.save_pretrained(save_folder_path)
+model.save_pretrained(save_folder_path)
