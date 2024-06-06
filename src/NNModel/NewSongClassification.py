@@ -65,9 +65,6 @@ def extract_features_from_song(song_path):
     return features
 
 def PreProcess(features, scaler):
-    # Convert features to tensor
-    # new_song_tensor = torch.tensor(features, dtype=torch.float32)
-
     # Scale features using the same scaler used during training
     scaled_features = scaler.transform(features)
 
@@ -79,8 +76,6 @@ def PreProcess(features, scaler):
     hidden_size1 = 1024  # Number of neurons for hidden layer 1 of 3
     hidden_size2 = 512
     hidden_size3 = 256
-    # hidden_size4 = 128
-    # hidden_size5 = 64
     output_size = 10
 
     # Load the saved model parameters
@@ -90,8 +85,6 @@ def PreProcess(features, scaler):
     # Pass features through the trained model
     with torch.no_grad():
         output_probabilities = loaded_model(scaled_features_tensor)
-
-    #print("output probabilities", output_probabilities)
     return output_probabilities
 
 

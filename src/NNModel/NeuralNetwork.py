@@ -10,10 +10,6 @@ class NeuralNetwork(nn.Module):
         self.relu2 = nn.ReLU()
         self.fc3 = nn.Linear(hidden_size2, hidden_size3)
         self.relu3 = nn.ReLU()
-        # self.fc4 = nn.Linear(hidden_size3, hidden_size4)
-        # self.relu4 = nn.ReLU()
-        # self.fc5 = nn.Linear(hidden_size4, hidden_size5)
-        # self.relu5 = nn.ReLU()
         self.fc4 = nn.Linear(hidden_size3, output_size)
         self.softmax = nn.Softmax(dim=1)
 
@@ -25,10 +21,6 @@ class NeuralNetwork(nn.Module):
         out = self.fc3(out)
         out = self.relu3(out)
         out = self.fc4(out)
-        # out = self.relu4(out)
-        # out = self.fc5(out)
-        # out = self.relu5(out)
-        # out = self.fc6(out)
         out = self.softmax(out)
         return out
 

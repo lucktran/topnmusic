@@ -59,9 +59,9 @@ def PreProcess():
     """Preproccesses the data from the featureExtracted.csv file"""
     print('PreProcessing Started')
     data = pandas.read_csv('featureExtracted.csv')
-    data.head() # Maybe don't need
+    data.head()
     data = data.drop(['filename'], axis=1)
-    data.head() # Again maybe don't need
+    data.head()
 
     # Create a mapping where each genre is represented by an integer
     genre_list = data.iloc[:, -1]
@@ -90,11 +90,9 @@ def CreateModel(X_train, X_test, y_train, y_test):
 
     # Initialize the model
     input_size = X_train.shape[1]
-    hidden_size1 = 1024 # Number of neurons for hidden layer 1 of 5
+    hidden_size1 = 1024 # Number of neurons for hidden layer 1 of 3
     hidden_size2 = 512
     hidden_size3 = 256
-    # hidden_size4 = 128
-    # hidden_size5 = 64
     output_size = 10
     model = NeuralNetwork.NeuralNetwork(input_size, hidden_size1, hidden_size2, hidden_size3, output_size)
 
